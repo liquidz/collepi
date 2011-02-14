@@ -31,23 +31,27 @@
                                                   (~fn (convert-map params#) session#)))
 ; }}}
 
-(defn convert-rank-for-response [rank]
-  (let [user (:user rank)]
-    (assoc rank
-           :user
-           {
-            :nickname (.getNickname user)
-            :avatar (gravatar-image (.getEmail user))
-            }
-           :book (get-book (:book rank))
-           )
-
-    )
-  )
-
 ; controller {{{
-(defn get-user-controller []
-  )
+(defn get-user-controller [{key-str :key}]
+  (let [key (str->key key-str)
+        user (get-user key)
+        collections (get-collections-from-user user)
+        histories (get-histories-from-user user)]
+    (remove-extra-key
+      (assoc user
+             :colletion (map #(assoc % :item (get-item (:item %))) collections)
+             :history histories))))
+
+(defn get-item-controller [{key-str :key}]
+  (let [key (str->key key-str)
+        item (get-item key)
+        collections (get-collections-from-item item)
+        histories (get-histories-from-item item)]
+    (remove-extra-key
+      (assoc item
+             :collection (map #(assoc % :user (get-user (:user %))) collections)
+             :history histories))))
+
 (defn check-login-controller [_]
   (if (du/user-logged-in?)
     (let [user (du/current-user)]
@@ -64,35 +68,24 @@
     )
   )
 
-(defn get-my-ranks-controller [params]
-  (when (du/user-logged-in?)
-    {:count (count-user-rank (du/current-user))
-     :result (map convert-rank-for-response (get-rank-from-user (du/current-user)))
-     }
-    )
-  )
-
-(defn set-isbn-controller [{:keys [isbn rank] :or {rank 1} :as params}]
-  (println "kitane:" isbn "/" rank "---" params)
-  (when (and (du/user-logged-in?) (not (string/blank? isbn)))
-    (println "login and isbn is ok")
-    (let [book (create-book isbn)]
-      (println "setting book:" book)
-      (create-rank book (du/current-user) rank "")
-      true
-      )
-    )
-  )
-
 (defn hoge [& args] nil)
 ; }}}
 
 (defroutes api-handler
-  (apiGET "/user" hoge);get-user-books-controller)
-  (apiGET "/book" hoge)
-  (apiGET "/my" get-my-ranks-controller)
-  (apiGET "/set" set-isbn-controller)
+  (apiGET "/user" get-user-controller)
+  (apiGET "/item" get-item-controller)
+
   (apiGET "/check/login" check-login-controller)
+
+  (apiGET "/collection/list" hoge)
+  (apiGET "/collection/user" hoge)
+  (apiGET "/collection/item" hoge)
+
+  (apiGET "/history/list" hoge)
+  (apiGET "/history/user" hoge)
+  (apiGET "/history/item" hoge)
+
+  (apiPOST "/update/collection" hoge)
   )
 
 (defroutes main-handler

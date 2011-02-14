@@ -7,7 +7,7 @@
                  [org.clojars.liquidz/digest "0.0.1"]
                  ]
   :dev-dependencies [
-                     [appengine-magic "0.3.2"]
+                     [appengine-magic "0.3.3"]
                      [ring-mock "0.1.1"]
                      ]
   )

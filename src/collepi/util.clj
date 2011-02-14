@@ -11,6 +11,8 @@
      )
   )
 
+(def *default-limit* 10)
+
 (defmacro aif [expr then & [else]]
   `(let [~'it ~expr] (if ~'it ~then ~else))
   )

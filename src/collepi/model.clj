@@ -14,7 +14,7 @@
      [clojure.contrib.io :as io])
   )
 
-(declare get-book)
+(declare get-item)
 
 
 ; rakuten {{{
@@ -53,12 +53,12 @@
 
 ; entity
 (ds/defentity User [^:key email nickname avatar date])
-(ds/defentity Book [^:key isbn title author thumbnail])
-(ds/defentity Collection [^:key id book user point read? date])
-(ds/defentity History [book user point read? comment date])
+(ds/defentity Item [^:key isbn title author thumbnail])
+(ds/defentity Collection [^:key id item user point read? date])
+(ds/defentity History [item user point read? comment date])
 
-(defn collection-id [book user]
-  (str1str (str (:isbn book) (:email user)))
+(defn collection-id [item user]
+  (sha1str (str (:isbn item) (:email user)))
   )
 
 ;; User
@@ -72,26 +72,26 @@
 (defn get-user [key-or-email] (ds/retrieve User key-or-email))
 
 
-;; Book
-(defn get-book [key-or-isbn] (ds/retrieve Book key-or-isbn))
-(defn create-book [isbn & {:keys [static? title author thumbnail] :or {static? false}}]
-  (aif (ds/retrieve Book isbn) it
+;; Item
+(defn get-item [key-or-isbn] (ds/retrieve Item key-or-isbn))
+(defn create-item [isbn & {:keys [static? title author thumbnail] :or {static? false}}]
+  (aif (ds/retrieve Item isbn) it
        (if static?
          (do
-           (ds/save! (Book. isbn title author thumbnail))
-           (ds/retrieve Book isbn)
+           (ds/save! (Item. isbn title author thumbnail))
+           (ds/retrieve Item isbn)
            )
          (with-rakuten-developer-id
            key/*rakuten-developer-id*
-           (let [bookdata (rakuten-book-search :isbn isbn)]
-             (when-not (= "NotFound" (-> bookdata :Header :Status))
-               (let [item (-> bookdata :Body :BooksBookSearch :Items :Item first)
+           (let [itemdata (rakuten-book-search :isbn isbn)]
+             (when-not (= "NotFound" (-> itemdata :Header :Status))
+               (let [item (-> itemdata :Body :BooksBookSearch :Items :Item first)
                      thumbnail* [(:smallImageUrl item)
                                  (:mediumImageUrl item)
                                  (:largeImageUrl item)]
                      ]
-                 (ds/save! (Book. isbn (:title item) (:author item) thumbnail*))
-                 (ds/retrieve Book isbn)
+                 (ds/save! (Item. isbn (:title item) (:author item) thumbnail*))
+                 (ds/retrieve Item isbn)
                  )
                )
              )
@@ -102,45 +102,54 @@
 
 ;; History
 (defn get-history [key] (ds/retrieve History key))
+(defn get-history-list [& {:keys [limit page] :or {limit *default-limit*, page 1}}]
+  (ds/query :kind History :sort [[:date :desc]] :limit limit :offset (* limit (dec page))))
 
-(defn create-history [book user point read? comment & {:keys [date] :or {date (now)}}]
-  (ds/retrieve History (ds/save! (History. book user point read? comment date)))
+(defn create-history [item user point read? comment & {:keys [date] :or {date (now)}}]
+  (ds/retrieve History (ds/save! (History. item user point read? comment date)))
   )
 
 (defn get-histories-from [key val & {:keys [limit page] :or {limit *default-limit*, page 1}}]
-  (ds/query :kind History :filter (= key val) :sort [:date] :limit limit :offset (* limit (dec page)))
+  (let [val* (if (entity? val) (ds/get-key-object val) val)]
+    (ds/query :kind History :filter (= key val*) :sort [[:date :desc]] :limit limit :offset (* limit (dec page)))
+    )
   )
 (def get-histories-from-user (partial get-histories-from :user))
-(def get-histories-from-book (partial get-histories-from :book))
+(def get-histories-from-item (partial get-histories-from :item))
 
 ;; Collections
 (defn get-collection [key-or-id] (ds/retrieve Collection key-or-id))
-(defn create-collection [book user & {:keys [point read? date] :or {point 1, read? false, date (now)}}]
-  (let [id (collection-id book user)]
+(defn get-collection-list [& {:keys [limit page] :or {limit *default-limit*, page 1}}]
+  (ds/query :kind Collection :sort [[:date :desc]] :limit limit :offset (* limit (dec page))))
+(defn create-collection [item user & {:keys [point read? date] :or {point 1, read? false, date (now)}}]
+  (let [id (collection-id item user)]
     (aif (get-collection id) it
-      (get-collection (ds/save! (Collection. id book user point read? date))))
+      (get-collection (ds/save! (Collection. id item user point read? date))))
     )
   )
 
-(defn update-collection [book user & {:keys [point read? date point-plus? comment] :or {date (now), point-plus? false}}]
-  (let [before (create-collection book user)
+(defn update-collection [item user & {:keys [point read? date point-plus? comment] :or {date (now), point-plus? false, comment nil}}]
+  (let [before (create-collection item user)
         after (get-collection
                 (ds/save! (assoc before
-                                 :point (if point-plus? (inc (:point col)) (aif point it (:point col)))
-                                 :read? (aif read? it (:read? col))
+                                 :point (if point-plus? (inc (:point before)) (aif point it (:point before)))
+                                 :read? (aif read? it (:read? before))
                                  :date date)))]
-    (create-history book user (:point after) (:read? after) (aif comment it "") :date date)
+    (create-history item user (:point after) (:read? after) (aif comment it "") :date date)
     after
     )
   )
 
-(defn get-collections-from [key val & {:keys [sort read? limit page] :or {sort :date, limit *default-limit*, page 1}}]
-  (let [offset (* limit (dec page))]
-    (if read?
-      (ds/query :kind Collection :filter [(= key val) (= :read? read?)] :sort [sort] :limit limit :offset offset)
-      (ds/query :kind Collection :filter (= key val) :sort [sort] :limit limit :offset offset)
+(defn get-collections-from [key val & {:keys [sort read? limit page] :or {sort [:date :desc],
+                                                                          limit *default-limit*, page 1}}]
+  (let [offset (* limit (dec page))
+        val* (if (entity? val) (ds/get-key-object val) val)
+        ]
+    (if (not (nil? read?))
+      (ds/query :kind Collection :filter [(= key val*) (= :read? read?)] :sort [sort] :limit limit :offset offset)
+      (ds/query :kind Collection :filter (= key val*) :sort [sort] :limit limit :offset offset)
       )
     )
   )
 (def get-collections-from-user (partial get-collections-from :user))
-(def get-collections-from-book (partial get-collections-from :book))
+(def get-collections-from-item (partial get-collections-from :item))
