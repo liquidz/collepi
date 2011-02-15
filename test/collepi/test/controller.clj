@@ -1,6 +1,6 @@
 (ns collepi.test.controller
   (:use
-     [collepi core util]
+     [collepi core util model]
      :reload)
   (:use clojure.test ring.mock.request clj-gravatar.core)
 
@@ -9,7 +9,7 @@
      [appengine-magic.services.datastore :as ds]
      [appengine-magic.services.user :as du]
      [clojure.contrib.json :as json]
-     ;[clojure.contrib.string :as string]
+     [clojure.contrib.string :as string]
      )
   )
 
@@ -36,6 +36,24 @@
 (defn- entity->key-str [e] (key->str (ds/get-key-object e)))
 ; }}}
 
+(defn put-test-data []
+  (let [user1 (create-user "hoge@fuga.com" "hoge")
+        user2 (create-user "fuga@fuga.com" "fuga")
+        item1 (create-item "1" :title "a" :author "b" :thumbnail "c" :static? true)
+        item2 (create-item "2" :title "d" :author "e" :thumbnail "f" :static? true)
+        col1 (update-collection item1 user1 :comment "aaa" :read? false :date "YYYY-01-01")
+        col2 (update-collection item1 user2 :comment "bbb" :read? true :date "YYYY-01-02")
+        col3 (update-collection item2 user1 :comment "ccc" :read? true :date "YYYY-01-03")
+        col4 (update-collection item2 user2 :comment "ddd" :read? false :date "YYYY-01-04")]
+    [
+     (entity->key-str user1) (entity->key-str user2)
+     (entity->key-str item1) (entity->key-str item2)
+     (entity->key-str col1) (entity->key-str col2)
+     (entity->key-str col3) (entity->key-str col4)
+     ]
+    )
+  )
+
 (deftest test-check-login-controller
   (let [res (body->json (testGET "/check/login"))]
     (are [x y] (= x y)
@@ -48,17 +66,12 @@
 
 (deftest test-get-user-controller
   (let [uri "/user?"
-        user (create-user "hoge@fuga.com" "hoge")
-        dummy-user (create-user "dummy@fuga.com" "dummy")
-        user-key-str (key->str (ds/get-key-object user))
-        item1 (create-item "1" :static? true)
-        item2 (create-item "2" :static? true)]
-    (update-collection item1 user :comment "aaa" :date "YYYY-01-01")
-    (update-collection item2 user :comment "bbb" :date "YYYY-01-02")
-    (update-collection item1 dummy-user)
+        [user-key-str] (put-test-data)]
 
     (let [res (body->json (testGET uri "key=" user-key-str))]
       (are [x y] (= x y)
+        nil (body->json (testGET uri "key=unknown"))
+
         "hoge" (:nickname res)
         (gravatar-image "hoge@fuga.com") (:avatar res)
         true (nil? (:email res))
@@ -68,7 +81,11 @@
         "2" (-> res :collection first :item :isbn)
         "1" (-> res :collection second :item :isbn)
 
-        "bbb" (-> res :history first :comment)
+        "hoge" (-> res :collection first :user :nickname)
+        "hoge" (-> res :collection second :user :nickname)
+        nil (-> res :collection first :user :email)
+
+        "ccc" (-> res :history first :comment)
         "aaa" (-> res :history second :comment)
         )
       )
@@ -77,25 +94,23 @@
 
 (deftest test-get-item-controller
   (let [uri "/item?"
-        user1 (create-user "hoge@fuga.com" "hoge")
-        user2 (create-user "fuga@fuga.com" "fuga")
-        item (create-item "1" :title "x" :author "y" :thumbnail "z" :static? true)
-        item-key-str (key->str (ds/get-key-object item))
-        dummy-item (create-item "2" :static? true)
-        ]
-    (update-collection item user1 :comment "aaa" :date "YYYY-01-01")
-    (update-collection item user2 :comment "bbb" :date "YYYY-01-02")
-    (update-collection dummy-item user1)
+        [_ _ item-key-str] (put-test-data)]
 
     (let [res (body->json (testGET uri "key=" item-key-str))]
       (are [x y] (= x y)
+        nil (body->json (testGET uri "key=unknown"))
+
         "1" (:isbn res)
-        "x" (:title res)
-        "y" (:author res)
-        "z" (:thumbnail res)
+        "a" (:title res)
+        "b" (:author res)
+        "c" (:thumbnail res)
 
         "fuga" (-> res :collection first :user :nickname)
         "hoge" (-> res :collection second :user :nickname)
+        nil (-> res :collection first :user :email)
+
+        "1" (-> res :collection first :item :isbn)
+        "1" (-> res :collection second :item :isbn)
 
         "bbb" (-> res :history first :comment)
         "aaa" (-> res :history second :comment)
@@ -105,22 +120,226 @@
   )
 
 (deftest test-get-collection-list
-  (let [uri "/collection/list?"
-        user1 (create-user "hoge@fuga.com" "hoge")
-        user2 (create-user "fuga@fuga.com" "fuga")
-        item1 (create-item "1" :static? true)
-        item2 (create-item "2" :static? true)
-        ]
-    (update-collection item1 user1 :date "YYYY-01-01")
-    (update-collection item1 user2 :date "YYYY-01-02")
-    (update-collection item2 user1 :date "YYYY-01-03")
-    (update-collection item2 user2 :date "YYYY-01-04")
+  (let [uri "/collection/list?"]
+    (put-test-data)
 
-    (are [x y] (= x (json-body y))
-      (testGET uri)
-      )
+    (are [x y] (= x (count (body->json y)))
+      4 (testGET uri)
+      1 (testGET uri "limit=1"))
 
     (let [res (body->json (testGET uri))]
+      (are [x y] (= x y)
+        "fuga" (-> res first :user :nickname)
+        nil (-> first :user :email)
+        "2" (-> res first :item :isbn)
+        "hoge" (-> res second :user :nickname)
+        nil (-> res second :user :email)
+        "2" (-> res second :item :isbn)))
+    )
+  )
+
+(deftest test-get-collections-from-user
+  (let [uri "/collection/user?"
+        [user-key-str] (put-test-data)]
+
+    (are [x y] (= x (count (body->json y)))
+      2 (testGET uri "key=" user-key-str)
+      1 (testGET uri "key=" user-key-str "&limit=1")
+      0 (testGET uri "key=unknown")
+      )
+
+    (let [res (body->json (testGET uri "key=" user-key-str))]
+      (are [x y] (= x y)
+        nil (body->json (testGET uri "key=unknown"))
+
+        "hoge" (-> res first :user :nickname)
+        nil (-> res first :user :email)
+        "2" (-> res first :item :isbn)
+        "hoge" (-> res second :user :nickname)
+        nil (-> res second :user :email)
+        "1" (-> res second :item :isbn)
+        )
+      )
+
+    (let [res (body->json (testGET uri "key=" user-key-str "&read=true"))]
+      (are [x y] (= x y)
+        1 (count res)
+        "2" (-> res first :item :isbn)
+        )
+      )
+    )
+  )
+
+(deftest test-get-collections-from-item
+  (let [uri "/collection/item?"
+        [_ _ item-key-str] (put-test-data)]
+
+    (are [x y] (= x (count (body->json y)))
+      2 (testGET uri "key=" item-key-str)
+      1 (testGET uri "key=" item-key-str "&limit=1")
+      0 (testGET uri "key=unknown")
+      )
+
+    (let [res (body->json (testGET uri "key=" item-key-str))]
+      (are [x y] (= x y)
+        nil (body->json (testGET uri "key=unknown"))
+
+        "fuga" (-> res first :user :nickname)
+        nil (-> res first :user :email)
+        "1" (-> res first :item :isbn)
+        "hoge" (-> res second :user :nickname)
+        nil (-> res second :user :email)
+        "1" (-> res second :item :isbn)
+        )
+      )
+
+    (let [res (body->json (testGET uri "key=" item-key-str "&read=true"))]
+      (are [x y] (= x y)
+        1 (count res)
+        "fuga" (-> res first :user :nickname)
+        )
+      )
+    )
+  )
+
+(deftest test-get-history-list
+  (let [uri "/history/list?"]
+    (put-test-data)
+
+    (are [x y] (= x (count (body->json y)))
+      4 (testGET uri)
+      1 (testGET uri "limit=1"))
+
+    (let [res (body->json (testGET uri))]
+      (are [x y] (= x y)
+        "ddd" (-> res first :comment)
+        "ccc" (-> res second :comment)
+
+        "fuga" (-> res first :user :nickname)
+        "hoge" (-> res second :user :nickname)
+        nil (-> res first :user :email)
+
+        "2" (-> res first :item :isbn)
+        "2" (-> res second :item :isbn)
+        )
+      )
+    )
+  )
+
+(deftest test-get-histories-from-user
+  (let [uri "/history/user?"
+        [user-key-str] (put-test-data)]
+
+    (are [x y] (= x (count (body->json y)))
+      0 (testGET uri "key=unknown")
+      2 (testGET uri "key=" user-key-str)
+      1 (testGET uri "key=" user-key-str "&limit=1")
+      )
+
+    (let [res (body->json (testGET uri "key=" user-key-str))]
+      (are [x y] (= x y)
+        nil (body->json (testGET uri "key=unknown"))
+
+        "ccc" (-> res first :comment)
+        "aaa" (-> res second :comment)
+
+        "hoge" (-> res first :user :nickname)
+        "hoge" (-> res second :user :nickname)
+        nil (-> res first :user :email)
+
+        "2" (-> res first :item :isbn)
+        "1" (-> res second :item :isbn)
+        )
+      )
+    )
+  )
+
+(deftest test-get-histories-from-item
+  (let [uri "/history/item?"
+        [_ _ item-key-str] (put-test-data)
+        ]
+
+    (are [x y] (= x (count (body->json y)))
+      0 (testGET uri "key=unknown")
+      2 (testGET uri "key=" item-key-str)
+      1 (testGET uri "key=" item-key-str "&limit=1")
+      )
+
+    (let [res (body->json (testGET uri "key=" item-key-str))]
+      (are [x y] (= x y)
+        nil (body->json (testGET uri "key=unknown"))
+
+        "bbb" (-> res first :comment)
+        "aaa" (-> res second :comment)
+
+        "fuga" (-> res first :user :nickname)
+        "hoge" (-> res second :user :nickname)
+        nil (-> res first :user :email)
+
+        "1" (-> res first :item :isbn)
+        "1" (-> res second :item :isbn)
+        )
+      )
+    )
+  )
+
+(deftest test-update-collection-controller
+  (let [uri "/update/collection"]
+    (testPOST {:isbn "4001156768"} uri)
+
+    (let [user-key (ds/get-key-object (get-user "hoge@fuga.com"))
+          item-key (ds/get-key-object (get-item "4001156768"))]
+
+      (is (not (nil? user-key)))
+      (is (not (nil? item-key)))
+
+      (let [item (get-item "4001156768")]
+        (are [x y] (= x y)
+          "4001156768" (:isbn item)
+          false (string/blank? (:title item))
+          false (string/blank? (:author item))
+          true (vector? (:thumbnail item))
+          3 (count (:thumbnail item))))
+
+      (let [col (get-collection-list)]
+        (are [x y] (= x y)
+          1 (count col)
+          user-key (-> col first :user)
+          item-key (-> col first :item)
+          1 (-> col first :point)
+          false (-> col first :read?)
+          true (-> col first :date today?)))
+
+      (let [his (get-history-list)]
+        (are [x y] (= x y)
+          1 (count his)
+          user-key (-> his first :user)
+          item-key (-> his first :item)
+          1 (-> his first :point)
+          false (-> his first :read?)
+          nil (-> his first :comment)
+          true (-> his first :date today?)))
+
+      (testPOST {:isbn "4001156768" :comment "hello" :read "true"} uri)
+
+      (let [col (get-collection-list)]
+        (are [x y] (= x y)
+          1 (count col)
+          user-key (-> col first :user)
+          item-key (-> col first :item)
+          2 (-> col first :point)
+          true (-> col first :read?)
+          true (-> col first :date today?)))
+
+      (let [his (get-history-list)]
+        (are [x y] (= x y)
+          2 (count his)
+          user-key (-> his first :user)
+          item-key (-> his first :item)
+          2 (-> his first :point)
+          true (-> his first :read?)
+          "hello" (-> his first :comment)
+          true (-> his first :date today?)))
       )
     )
   )

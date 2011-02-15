@@ -164,8 +164,10 @@
         item1 (create-item "1" :static? true)
         item1-key (ds/get-key-object item1)
         item2 (create-item "2" :static? true)
+        item3 (create-item "3" :static? true)
         ]
 
+    ; item1 user first update
     (let [col (update-collection item1 user :date "dummy")]
       (are [x y] (= x y)
         item1-key (:item col)
@@ -177,6 +179,7 @@
         )
       )
 
+    ; item1 user second update with point-plus?
     (let [col (update-collection item1 user :point-plus? true :read? true)]
       (are [x y] (= x y)
         2 (:point col)
@@ -187,8 +190,19 @@
         )
       )
 
+    ; item3 user first update with point-plus?
+    (let [col (update-collection item3 user :point-plus? true)]
+      (are [x y] (= x y)
+        1 (:point col)
+        false (:read? col)
+        true (today? (:date col))
+
+        2 (count (get-collections-from-user user))
+        )
+      )
+
     (update-collection item2 user)
-    (is (= 2 (count (get-collections-from-user user))))
+    (is (= 3 (count (get-collections-from-user user))))
     )
   )
 

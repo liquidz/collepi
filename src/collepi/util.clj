@@ -29,8 +29,14 @@
 (defn entity? [obj] (extends? ds/EntityProtocol (class obj)))
 (defn get-kind [entity] (.getKind (ds/get-key-object entity)))
 
+(defn map-val-map [f m]
+  (apply hash-map (mapcat (fn [[k v]] [k (f v)]) m)))
 
-(defn remove-extra-key [m] (dissoc m :secret-mail))
+(defn remove-extra-key [obj]
+  (cond
+    (map? obj) (map-val-map remove-extra-key (dissoc obj :email))
+    (sequential? obj) (map remove-extra-key obj)
+    :else obj))
 
 (def delete-html-tag (partial string/replace-re #"<.+?>" ""))
 
@@ -41,10 +47,6 @@
     (interleave
       (map keyword (keys m))
       (map (comp string/trim delete-html-tag) (vals m))))
-  )
-
-(defn map-val-map [f m]
-  (apply hash-map (mapcat (fn [[k v]] [k (f v)]) m))
   )
 
 (defn- json-conv [obj]
