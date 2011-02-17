@@ -121,6 +121,8 @@
 
 (deftest test-get-collection-list
   (let [uri "/collection/list?"]
+    (is (zero? (count (body->json (testGET uri)))))
+
     (put-test-data)
 
     (are [x y] (= x (count (body->json y)))
@@ -204,6 +206,8 @@
 
 (deftest test-get-history-list
   (let [uri "/history/list?"]
+    (is (zero? (count (body->json (testGET uri)))))
+
     (put-test-data)
 
     (are [x y] (= x (count (body->json y)))

@@ -11,7 +11,9 @@
   (:require
      key
      [clojure.contrib.json :as json]
-     [clojure.contrib.io :as io])
+     [clojure.contrib.io :as io]
+     [clojure.contrib.logging :as log]
+     )
   )
 
 (declare get-item)
@@ -58,10 +60,17 @@
 (ds/defentity History [item user point read? comment date])
 
 (defn collection-id [item user]
-  (sha1str (str (:isbn item) (:email user)))
-  )
+  (sha1str (str (:isbn item) (:email user))))
+
+(defmacro query-collection [& {:keys [filter limit page]}]
+  `(ds/query :kind Collection :filter ~filter :sort [[:date :desc] [:point :desc]]
+             :limit ~limit :offset (* ~limit (dec ~page))))
+(defmacro query-history [& {:keys [filter limit page]}]
+  `(ds/query :kind History :filter ~filter :sort [[:date :desc] [:point :desc]]
+             :limit ~limit :offset (* ~limit (dec ~page))))
 
 ;; User
+
 (defn create-user
   ([user]
    (create-user (.getEmail user) (.getNickname user)))
@@ -101,10 +110,12 @@
        )
   )
 
+(def *sort* '([:date :desc] [:point :desc]))
+
 ;; History
 (defn get-history [key] (when key (ds/retrieve History key)))
 (defn get-history-list [& {:keys [limit page] :or {limit *default-limit*, page 1}}]
-  (ds/query :kind History :sort [[:date :desc] :point] :limit limit :offset (* limit (dec page))))
+  (query-history :limit limit :page page))
 
 (defn create-history [item user point read? comment & {:keys [date] :or {date (now)}}]
   (ds/retrieve History (ds/save! (History. item user point read? comment date)))
@@ -112,22 +123,18 @@
 
 (defn get-histories-from [key val & {:keys [limit page] :or {limit *default-limit*, page 1}}]
   (let [val* (if (entity? val) (ds/get-key-object val) val)]
-    (ds/query :kind History :filter (= key val*) :sort [[:date :desc] :point] :limit limit :offset (* limit (dec page)))
-    )
-  )
+    (query-history :filter (= key val*) :limit limit :page page)))
 (def get-histories-from-user (partial get-histories-from :user))
 (def get-histories-from-item (partial get-histories-from :item))
 
 ;; Collections
 (defn get-collection [key-or-id] (when key-or-id (ds/retrieve Collection key-or-id)))
 (defn get-collection-list [& {:keys [limit page] :or {limit *default-limit*, page 1}}]
-  (ds/query :kind Collection :sort [[:date :desc] :point] :limit limit :offset (* limit (dec page))))
+  (query-collection :limit limit :page page))
 (defn create-collection [item user & {:keys [point read? date] :or {point 1, read? false, date (now)}}]
   (let [id (collection-id item user)]
     (aif (get-collection id) it
-      (get-collection (ds/save! (Collection. id item user point read? date))))
-    )
-  )
+      (get-collection (ds/save! (Collection. id item user point read? date))))))
 
 (defn update-collection [item user & {:keys [point read? date point-plus? comment] :or {date (now), point-plus? false, comment nil}}]
   (let [id (collection-id item user)
@@ -147,13 +154,10 @@
 
 (defn get-collections-from [key val & {:keys [read? limit page] :or {limit *default-limit*, page 1}}]
   (let [offset (* limit (dec page))
-        val* (if (entity? val) (ds/get-key-object val) val)
-        ]
+        val* (if (entity? val) (ds/get-key-object val) val)]
     (if (not (nil? read?))
-      (ds/query :kind Collection :filter [(= key val*) (= :read? read?)] :sort [[:date :desc] :point] :limit limit :offset offset)
-      (ds/query :kind Collection :filter (= key val*) :sort [[:date :desc] :point] :limit limit :offset offset)
-      )
-    )
-  )
+      (query-collection :filter [(= key val*) (= :read? read?)] :limit limit :page page)
+      (query-collection :filter (= key val*) :limit limit :page page))))
+
 (def get-collections-from-user (partial get-collections-from :user))
 (def get-collections-from-item (partial get-collections-from :item))

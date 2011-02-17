@@ -1,0 +1,15 @@
+{%}logged_in{%}
+<p><img src="$(.avatar)" alt="avatar" style="width:25px;height:25px;" /><span>$(.nickname)</span> <a href="$(.url)">logout</a></p>
+
+{%}not_logged_in{%}
+<p><a href="$(.url)">login</a></p>
+
+{%}user_collection{%}
+<li>
+	<img src="$(.item.thumbnail)" />
+	<span class="item_title">$(.item.title)</span>
+	<span class="item_author">$(.item.author)</span>
+	<span class="item_date">$(.date)</span>
+	<span class="item_point">$(.point)</span>
+	<span class="item_read">$(.read?)</span>
+</li>
