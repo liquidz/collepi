@@ -84,15 +84,19 @@
 ;; Item
 (deftest test-create-item
   (let [item1 (create-item "4001156768")
-        item2 (create-item "123" :static? true :title "aa" :author "bb" :thumbnail "cc")]
+        item2 (create-item "123" :static? true :title "aa" :author "bb" :smallimage "cc" :mediumimage "ccc" :largeimage "cccc")]
     (are [x y] (= x y)
       false (string/blank? (:title item1))
       false (string/blank? (:author item1))
-      false (nil? (:thumbnail item1))
+      false (nil? (:smallimage item1))
+      false (nil? (:mediumimage item1))
+      false (nil? (:largeimage item1))
 
       "aa" (:title item2)
       "bb" (:author item2)
-      "cc" (:thumbnail item2)
+      "cc" (:smallimage item2)
+      "ccc" (:mediumimage item2)
+      "cccc" (:largeimage item2)
       )
     )
   )

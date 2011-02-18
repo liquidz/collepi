@@ -25,23 +25,33 @@
 (defmacro jsonPOST [path bind & body] `(json-service POST ~path ~bind ~@body))
 (defmacro apiGET [path fn] `(jsonGET ~path {params# :params} (~fn (convert-map params#))))
 (defmacro apiPOST [path fn] `(jsonPOST ~path {params# :params} (~fn (convert-map params#))))
+
+(defmacro apiGET-with-session [path fn] `(jsonGET ~path {params# :params, session# :session}
+                                                  (~fn (convert-map params#) session#)))
+(defmacro apiPOST-with-session [path fn] `(jsonPOST ~path {params# :params, session# :session}
+                                                    (~fn (convert-map params#) session#)))
 ; }}}
 
 ; controller {{{
+
+(defn read?->read [obj]
+  (if (sequential? obj) (map read?->read obj)
+    (if-not (nil? obj) (assoc (dissoc obj :read?) :read (:read? obj)))))
 
 (defn- complete-user-and-item [obj & {:keys [user item]}]
   (if (sequential? obj)
     (map #(complete-user-and-item % :user user :item item) obj)
     (if-not (nil? obj)
-      (assoc obj :user (aif user it (get-user (:user obj))) :item (aif item it (get-item (:item obj)))))))
+      (assoc obj :user (aif user it (get-user (:user obj)))
+             :item (aif item it (get-item (:item obj)))))))
 (def complete-and-remove (comp remove-extra-key complete-user-and-item))
 
 ;; User
 (defn get-user-controller [{key-str :key}]
   (when-let [key (str->key key-str)]
     (let [user (get-user key)
-          collections (get-collections-from-user user)
-          histories (get-histories-from-user user)]
+          collections (read?->read (get-collections-from-user user))
+          histories (read?->read (get-histories-from-user user))]
       (remove-extra-key
         (assoc user :collection (complete-user-and-item collections :user user)
                :history (complete-user-and-item histories :user user))))))
@@ -51,8 +61,8 @@
   (when-let [key (str->key key-str)]
     (let [key (str->key key-str)
           item (get-item key)
-          collections (get-collections-from-item item)
-          histories (get-histories-from-item item)]
+          collections (read?->read (get-collections-from-item item))
+          histories (read?->read (get-histories-from-item item))]
       (remove-extra-key
         (assoc item :collection (complete-user-and-item collections :item item)
                :history (complete-user-and-item histories :item item))))))
@@ -60,39 +70,66 @@
 ;; Collection
 (defn get-collection-list-controller [params]
   (let [[limit page] (params->limit-and-page params)]
-    (complete-and-remove (get-collection-list :limit limit :page page))))
+    (-> (get-collection-list :limit limit :page page)
+      complete-and-remove read?->read)))
 
 (defn- get-collections-from-controller [f {key-str :key, read :read :as params}]
   (let [[limit page] (params->limit-and-page params)
         key (str->key key-str)]
-    (when key (complete-and-remove (f key :limit limit :page page :read? (aif read (= it "true") nil))))))
+    (when key
+      (->(f key :limit limit :page page :read? (aif read (= it "true") nil))
+        complete-and-remove read?->read))))
 
 (def get-collections-from-user-controller
   (partial get-collections-from-controller get-collections-from-user))
 (def get-collections-from-item-controller
   (partial get-collections-from-controller get-collections-from-item))
 
+(defn get-my-collections-controller [params]
+  (when-let [user (get-current-user)]
+    (let [[limit page] (params->limit-and-page params)]
+      (-> (get-collections-from-user user :limit limit :page page)
+        complete-and-remove read?->read
+        ))))
+
 ;; History
 (defn get-history-list-controller [params]
   (let [[limit page] (params->limit-and-page params)]
-    (complete-and-remove (get-history-list :limit limit :page page))))
+    (->(get-history-list :limit limit :page page)
+      complete-and-remove read?->read)))
 
 (defn- get-histories-from-controller [f {key-str :key, :as params}]
   (let [[limit page] (params->limit-and-page params)
         key (str->key key-str)]
-    (when key (complete-and-remove (f key :limit limit :page page)))))
+    (when key
+      (->(f key :limit limit :page page) complete-and-remove read?->read))))
 
 (def get-histories-from-user-controller
   (partial get-histories-from-controller get-histories-from-user))
 (def get-histories-from-item-controller
   (partial get-histories-from-controller get-histories-from-item))
 
-
-(defn update-collection-controller [{:keys [isbn comment read]}]
+(defn get-my-histories-controller [params]
   (when-let [user (get-current-user)]
-    (when-let [item (create-item isbn)]
-      (update-collection item user :comment comment :read? (= read "true") :point-plus? true)
-      true)))
+    (let [[limit page] (params->limit-and-page params)]
+      (-> (get-histories-from-user user :limit limit :page page)
+        complete-and-remove read?->read)))
+
+  )
+
+(defn update-collection-controller [{:keys [isbn comment read]} session]
+  (if-let [user (get-current-user)]
+    (if (string/blank? isbn)
+      (with-message session false "isbn is blank")
+      (if-let [item (create-item isbn)]
+        (do
+          (update-collection item user :comment comment :read? (= read "true") :point-plus? true)
+          (with-message session true "update success"))
+        (with-message session false "item is not found")))
+    (with-message session false "not logged in")))
+
+(defn get-message-controller [_ session]
+  (with-message session (:message session) ""))
 
 (defn check-login-controller [_]
   (if-let [user (get-current-user)]
@@ -101,17 +138,7 @@
      :avatar (:avatar user)
      :url (du/logout-url)}
     {:loggedin false
-     :url (du/login-url)}
-    )
- ; (if (du/user-logged-in?)
- ;   (let [user (du/current-user)]
- ;     {:loggedin true
- ;      :nickname (.getNickname user)
- ;      :avatar (gravatar-image (.getEmail user))
- ;      :url (du/logout-url)})
- ;   {:loggedin false
- ;    :url (du/login-url)})
-  )
+     :url (du/login-url)}))
 ; }}}
 
 (defroutes api-handler
@@ -124,11 +151,15 @@
   (apiGET "/collection/user" get-collections-from-user-controller)
   (apiGET "/collection/item" get-collections-from-item-controller)
 
+  (apiGET "/my/collection" get-my-collections-controller)
+  (apiGET "/my/history" get-my-histories-controller)
+
   (apiGET "/history/list" get-history-list-controller)
   (apiGET "/history/user" get-histories-from-user-controller)
   (apiGET "/history/item" get-histories-from-item-controller)
 
-  (apiPOST "/update/collection" update-collection-controller))
+  (apiGET-with-session "/message" get-message-controller)
+  (apiPOST-with-session "/update/collection" update-collection-controller))
 
 (defroutes main-handler
   (GET "/login" _ (redirect (du/login-url)))
@@ -139,5 +170,5 @@
   api-handler
   main-handler)
 
-;(wrap! app-handler wrap-session)
+(wrap! app-handler wrap-session)
 (ae/def-appengine-app collepi-app #'app-handler)

@@ -2,10 +2,22 @@
 	var Collepi = {};
 	Collepi.tmpl = {};
 
-	Collepi.updateCollection = function(){
-		$.getJSON("/collection/list", function(res){
-			console.log(res);
+	Collepi.updateMyCollection = function(){
+		$.getJSON("/my/collection", function(res){
 			$("#user_collection ul").html(SNBinder.bind_rowset(Collepi.tmpl.user_collection, res));
+		});
+	};
+
+	Collepi.updateMyHistory = function(){
+		$.getJSON("/my/history", function(res){
+			$("#user_history ul").html(SNBinder.bind_rowset(Collepi.tmpl.user_history, res));
+		});
+	};
+
+	Collepi.getMessage = function(){
+		$.getJSON("/message", function(res){
+			console.log("message res = " + res);
+			$("#message").html(res);
 		});
 	};
 
@@ -19,17 +31,39 @@
 				$("#login").html(SNBinder.bind(tmpl[(res.loggedin) ? "logged_in" : "not_logged_in"], res));
 			});
 
-			Collepi.updateCollection();
+			Collepi.updateMyCollection();
+			Collepi.updateMyHistory();
 		});
 
 		$("#add_isbn").bind("click", function(){
+			console.log("clicked");
 			var isbn = $("#isbn").val();
-			$.post("/update/collection", {isbn: isbn}, function(res){
-				if(res){
-					Collepi.updateCollection();
+			$.ajax({
+				type: "POST",
+				url: "/update/collection",
+				data: {
+					isbn: isbn,
+					read: (($("#read:checked").length === 1) ? "true" : "false"),
+					comment: $("#comment").text()
+				},
+				dataType: "json",
+				success: function(res){
+					console.log("res = " + res);
+					if(res){ Collepi.updateMyCollection(); }
+				},
+				complete: function(){
+					console.log("complete");
+					Collepi.getMessage();
 				}
 			});
 		});
+
+		$("#test_btn").bind("click", function(){
+			console.log("read = " + $("#read").val());
+			console.log("read checked = " + $("#read:checked").length);
+		});
+
+		Collepi.getMessage();
 	});
 
 	window.Collepi = Collepi;

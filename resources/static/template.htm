@@ -6,10 +6,21 @@
 
 {%}user_collection{%}
 <li>
-	<img src="$(.item.thumbnail)" />
+	<img src="$(.item.smallimage)" />
 	<span class="item_title">$(.item.title)</span>
 	<span class="item_author">$(.item.author)</span>
 	<span class="item_date">$(.date)</span>
 	<span class="item_point">$(.point)</span>
-	<span class="item_read">$(.read?)</span>
+	<span class="item_read">$(.read)</span>
+</li>
+
+{%}user_history{%}
+<li>
+	<img src="$(.item.smallimage)" />
+	<span class="history_title">$(.item.title)</span>
+	<span class="history_author">$(.item.author)</span>
+	<span class="history_date">$(.date)</span>
+	<span class="history_point">$(.point)</span>
+	<span class="history_read">$(.read)</span>
+	<p class="history_comment">$(.comment)</p>
 </li>

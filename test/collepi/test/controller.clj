@@ -39,8 +39,8 @@
 (defn put-test-data []
   (let [user1 (create-user "hoge@fuga.com" "hoge")
         user2 (create-user "fuga@fuga.com" "fuga")
-        item1 (create-item "1" :title "a" :author "b" :thumbnail "c" :static? true)
-        item2 (create-item "2" :title "d" :author "e" :thumbnail "f" :static? true)
+        item1 (create-item "1" :title "a" :author "b" :smallimage "c" :mediumimage "cc" :largeimage "ccc" :static? true)
+        item2 (create-item "2" :title "d" :author "e" :smallimage "f" :mediumimage "ff" :largeimage "fff" :static? true)
         col1 (update-collection item1 user1 :comment "aaa" :read? false :date "YYYY-01-01")
         col2 (update-collection item1 user2 :comment "bbb" :read? true :date "YYYY-01-02")
         col3 (update-collection item2 user1 :comment "ccc" :read? true :date "YYYY-01-03")
@@ -103,7 +103,9 @@
         "1" (:isbn res)
         "a" (:title res)
         "b" (:author res)
-        "c" (:thumbnail res)
+        "c" (:smallimage res)
+        "cc" (:mediumimage res)
+        "ccc" (:largeimage res)
 
         "fuga" (-> res :collection first :user :nickname)
         "hoge" (-> res :collection second :user :nickname)
@@ -132,11 +134,16 @@
     (let [res (body->json (testGET uri))]
       (are [x y] (= x y)
         "fuga" (-> res first :user :nickname)
-        nil (-> first :user :email)
+        nil (-> res first :user :email)
         "2" (-> res first :item :isbn)
+        nil (-> res first :read?)
+        false (-> res first :read)
+
         "hoge" (-> res second :user :nickname)
         nil (-> res second :user :email)
-        "2" (-> res second :item :isbn)))
+        "2" (-> res second :item :isbn)
+        nil (-> res second :read?)
+        true (-> res second :read)))
     )
   )
 
@@ -157,9 +164,14 @@
         "hoge" (-> res first :user :nickname)
         nil (-> res first :user :email)
         "2" (-> res first :item :isbn)
+        nil (-> res first :read?)
+        true (-> res first :read)
+
         "hoge" (-> res second :user :nickname)
         nil (-> res second :user :email)
         "1" (-> res second :item :isbn)
+        nil (-> res second :read?)
+        false (-> res second :read)
         )
       )
 
@@ -189,9 +201,14 @@
         "fuga" (-> res first :user :nickname)
         nil (-> res first :user :email)
         "1" (-> res first :item :isbn)
+        nil (-> res first :read?)
+        true (-> res first :read)
+
         "hoge" (-> res second :user :nickname)
         nil (-> res second :user :email)
         "1" (-> res second :item :isbn)
+        nil (-> res second :read?)
+        false (-> res second :read)
         )
       )
 
@@ -203,6 +220,21 @@
       )
     )
   )
+
+(deftest test-get-my-collections
+  (let [uri "/my/collection?"]
+    (is (zero? (count (body->json (testGET uri)))))
+
+    (put-test-data)
+
+    (are [x y] (= x (count (body->json y)))
+      2 (testGET uri)
+      1 (testGET uri "limit=1"))
+
+    (let [res (body->json (testGET uri))]
+      (are [x y] (= x y)
+        "hoge" (-> res first :user :nickname)
+        "2" (-> res first :item :isbn)))))
 
 (deftest test-get-history-list
   (let [uri "/history/list?"]
@@ -225,6 +257,12 @@
 
         "2" (-> res first :item :isbn)
         "2" (-> res second :item :isbn)
+
+        nil (-> res first :read?)
+        nil (-> res second :read?)
+
+        false (-> res first :read)
+        true (-> res second :read)
         )
       )
     )
@@ -253,6 +291,11 @@
 
         "2" (-> res first :item :isbn)
         "1" (-> res second :item :isbn)
+
+        nil (-> res first :read?)
+        nil (-> res second :read?)
+        true (-> res first :read)
+        false (-> res second :read)
         )
       )
     )
@@ -282,14 +325,35 @@
 
         "1" (-> res first :item :isbn)
         "1" (-> res second :item :isbn)
+
+        nil (-> res first :read?)
+        nil (-> res second :read?)
+        true (-> res first :read)
+        false (-> res second :read)
         )
       )
     )
   )
 
+(deftest test-get-my-histories
+  (let [uri "/my/history?"]
+    (is (zero? (count (body->json (testGET uri)))))
+
+    (put-test-data)
+
+    (are [x y] (= x (count (body->json y)))
+      2 (testGET uri)
+      1 (testGET uri "limit=1"))
+
+    (let [res (body->json (testGET uri))]
+      (are [x y] (= x y)
+        "hoge" (-> res first :user :nickname)
+        "2" (-> res first :item :isbn)))))
+
 (deftest test-update-collection-controller
   (let [uri "/update/collection"]
-    (testPOST {:isbn "4001156768"} uri)
+    (is (not (body->json (testPOST {:isbn ""} uri))))
+    (is (body->json (testPOST {:isbn "4001156768"} uri)))
 
     (let [user-key (ds/get-key-object (get-user "hoge@fuga.com"))
           item-key (ds/get-key-object (get-item "4001156768"))]
@@ -302,8 +366,9 @@
           "4001156768" (:isbn item)
           false (string/blank? (:title item))
           false (string/blank? (:author item))
-          true (vector? (:thumbnail item))
-          3 (count (:thumbnail item))))
+          false (string/blank? (:smallimage item))
+          false (string/blank? (:mediumimage item))
+          false (string/blank? (:largeimage item))))
 
       (let [col (get-collection-list)]
         (are [x y] (= x y)

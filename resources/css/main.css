@@ -1,3 +1,5 @@
 @import "common.css";
 
-	
+#message {
+	color: #f00;
+}

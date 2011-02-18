@@ -28,7 +28,7 @@
 
 (defn remove-extra-key [obj]
   (cond
-    (map? obj) (map-val-map remove-extra-key (dissoc obj :email))
+    (map? obj) (map-val-map remove-extra-key (dissoc obj :email :secret?))
     (sequential? obj) (map remove-extra-key obj)
     :else obj))
 

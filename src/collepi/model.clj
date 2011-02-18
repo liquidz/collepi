@@ -55,8 +55,9 @@
 
 ; entity
 (ds/defentity User [^:key email nickname avatar date])
-(ds/defentity Item [^:key isbn title author thumbnail])
-(ds/defentity Collection [^:key id item user point read? date])
+;(ds/defentity Item [^:key isbn title author thumbnail])
+(ds/defentity Item [^:key isbn title author smallimage mediumimage largeimage])
+(ds/defentity Collection [^:key id item user point read? secret? date])
 (ds/defentity History [item user point read? comment date])
 
 (defn collection-id [item user]
@@ -84,23 +85,22 @@
 
 ;; Item
 (defn get-item [key-or-isbn] (when key-or-isbn (ds/retrieve Item key-or-isbn)))
-(defn create-item [isbn & {:keys [static? title author thumbnail] :or {static? false}}]
+(defn create-item [isbn & {:keys [static? title author smallimage mediumimage largeimage] :or {static? false}}]
   (aif (ds/retrieve Item isbn) it
        (if static?
          (do
-           (ds/save! (Item. isbn title author thumbnail))
+           (ds/save! (Item. isbn title author smallimage mediumimage largeimage))
            (ds/retrieve Item isbn)
            )
          (with-rakuten-developer-id
            key/*rakuten-developer-id*
            (let [itemdata (rakuten-book-search :isbn isbn)]
              (when-not (= "NotFound" (-> itemdata :Header :Status))
-               (let [item (-> itemdata :Body :BooksBookSearch :Items :Item first)
-                     thumbnail* [(:smallImageUrl item)
-                                 (:mediumImageUrl item)
-                                 (:largeImageUrl item)]
-                     ]
-                 (ds/save! (Item. isbn (:title item) (:author item) thumbnail*))
+               (let [item (-> itemdata :Body :BooksBookSearch :Items :Item first)]
+                 (ds/save! (Item. isbn (:title item) (:author item)
+                                  (:smallImageUrl item)
+                                  (:mediumImageUrl item)
+                                  (:largeImageUrl item)))
                  (ds/retrieve Item isbn)
                  )
                )
@@ -131,10 +131,10 @@
 (defn get-collection [key-or-id] (when key-or-id (ds/retrieve Collection key-or-id)))
 (defn get-collection-list [& {:keys [limit page] :or {limit *default-limit*, page 1}}]
   (query-collection :limit limit :page page))
-(defn create-collection [item user & {:keys [point read? date] :or {point 1, read? false, date (now)}}]
+(defn create-collection [item user & {:keys [point read? secret? date] :or {point 1, read? false, secret? false, date (now)}}]
   (let [id (collection-id item user)]
     (aif (get-collection id) it
-      (get-collection (ds/save! (Collection. id item user point read? date))))))
+      (get-collection (ds/save! (Collection. id item user point read? secret? date))))))
 
 (defn update-collection [item user & {:keys [point read? date point-plus? comment] :or {date (now), point-plus? false, comment nil}}]
   (let [id (collection-id item user)
