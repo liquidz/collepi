@@ -205,6 +205,14 @@
         )
       )
 
+    ; item1 user third update with only point-plus
+    (let [col (update-collection item1 user :point-plus? true)]
+      (are [x y] (= x y)
+        3 (:point col)
+        true (:read? col) ; set true at second update
+        )
+      )
+
     (update-collection item2 user)
     (is (= 3 (count (get-collections-from-user user))))
     )
@@ -264,6 +272,39 @@
         false (:read? (first ahls))
         )
       )
+
+    (update-collection item2 user1 :comment "bbb" :date "YYYY-01-04")
+    (let [hls (get-histories-from-user user1)]
+      (is (:read? (first hls)))
+      )
     )
   )
 
+(deftest test-get-comment-list
+  (let [
+        user (create-user "hoge@fuga.com" "hoge")
+        item1 (create-item "1" :static? true)
+        item2 (create-item "2" :static? true)
+        item3 (create-item "3" :static? true)
+        ]
+    (update-collection item1 user :comment "aaa" :date "YYYY-01-01")
+    (update-collection item2 user :date "YYYY-01-02")
+    (update-collection item3 user :comment "bbb" :date "YYYY-01-03")
+
+    (are [x y] (= x (count y))
+      2 (get-comment-list)
+      1 (get-comment-list :limit 1))
+
+    (let [res (get-comment-list)]
+      (are [x y] (= x y)
+        "bbb" (-> res first :comment)
+        "3" (-> res first :item get-item :isbn)
+        "hoge" (-> res first :user get-user :nickname)
+
+        "aaa" (-> res second :comment)
+        "1" (-> res second :item get-item :isbn)
+        "hoge" (-> res second :user get-user :nickname)
+        )
+      )
+    )
+  )

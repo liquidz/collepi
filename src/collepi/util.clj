@@ -22,6 +22,7 @@
     (try (KeyFactory/stringToKey obj) (catch Exception e nil))))
 (defn entity? [obj] (extends? ds/EntityProtocol (class obj)))
 (defn get-kind [entity] (.getKind (ds/get-key-object entity)))
+(defn entity->key-str [e] (key->str (ds/get-key-object e)))
 
 (defn map-val-map [f m]
   (apply hash-map (mapcat (fn [[k v]] [k (f v)]) m)))

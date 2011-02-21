@@ -65,10 +65,10 @@
 
 (defmacro query-collection [& {:keys [filter limit page]}]
   `(ds/query :kind Collection :filter ~filter :sort [[:date :desc] [:point :desc]]
-             :limit ~limit :offset (* ~limit (dec ~page))))
+             :limit ~limit :offset (if (and ~limit ~page) (* ~limit (dec ~page)))))
 (defmacro query-history [& {:keys [filter limit page]}]
   `(ds/query :kind History :filter ~filter :sort [[:date :desc] [:point :desc]]
-             :limit ~limit :offset (* ~limit (dec ~page))))
+             :limit ~limit :offset (if (and ~limit ~page) (* ~limit (dec ~page)))))
 
 ;; User
 
@@ -138,7 +138,7 @@
 
 (defn update-collection [item user & {:keys [point read? date point-plus? comment] :or {date (now), point-plus? false, comment nil}}]
   (let [id (collection-id item user)
-        first? (nil? (get-collection id))
+        first? (nil? (if id (get-collection id)))
         before (create-collection item user)
         after (get-collection
                 (ds/save! (assoc before
@@ -161,3 +161,6 @@
 
 (def get-collections-from-user (partial get-collections-from :user))
 (def get-collections-from-item (partial get-collections-from :item))
+
+(defn get-comment-list [& {:keys [limit page] :or {limit *default-limit*, page 1}}]
+  (take limit (drop (* limit (dec page)) (remove #(nil? (:comment %)) (query-history)))))

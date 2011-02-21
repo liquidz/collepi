@@ -4,23 +4,40 @@
 {%}not_logged_in{%}
 <p><a href="$(.url)">login</a></p>
 
-{%}user_collection{%}
+{%}item_small_image_link{%}
+<a class="js_link" href="#item/$(.item.isbn)"><img src="$(.item.smallimage)" alt="$(.item.title) small image" /></a>
+
+{%}item_title_link{%}
+<a class="js_link" href="#item/$(.item.isbn)">$(.item.title)</a>
+
+{%}item_user_link{%}
+<a class="js_link" href="#user/$(.user.key)">$(.user.nickname)</a>
+
+{%}item_collected_users{%}
+<li><a href="#user/$(.user.key)"><img src="$(.user.avatar)" /></a></li>
+
+{%}item_comments{%}
+<li>$(_item_user_link): $(.comment)</li>
+
+{%}recent_collection{%}
 <li>
-	<img src="$(.item.smallimage)" />
-	<span class="item_title">$(.item.title)</span>
-	<span class="item_author">$(.item.author)</span>
-	<span class="item_date">$(.date)</span>
-	<span class="item_point">$(.point)</span>
-	<span class="item_read">$(.read)</span>
+	$(_item_small_image_link)
+	<span class="item_title">$(_item_title_link)</span>
+	<span class="item_user">$(_item_user_link)</span>
 </li>
 
-{%}user_history{%}
+{%}recent_comment{%}
 <li>
-	<img src="$(.item.smallimage)" />
-	<span class="history_title">$(.item.title)</span>
-	<span class="history_author">$(.item.author)</span>
-	<span class="history_date">$(.date)</span>
-	<span class="history_point">$(.point)</span>
-	<span class="history_read">$(.read)</span>
-	<p class="history_comment">$(.comment)</p>
+	<span>$(_item_title_link): </span>
+	<span>$(.comment)</span>
 </li>
+
+{%}item{%}
+<section>
+	<h1>$(.title)</h1>
+	<span>$(.author)</span>
+
+	<ul>$(_item_collected_users)</ul>
+
+	<ul>$(_item_comments)</ul>
+</section>

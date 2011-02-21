@@ -33,7 +33,6 @@
     )
   )
 
-(defn- entity->key-str [e] (key->str (ds/get-key-object e)))
 ; }}}
 
 (defn put-test-data []
@@ -116,6 +115,15 @@
 
         "bbb" (-> res :history first :comment)
         "aaa" (-> res :history second :comment)
+        )
+      )
+
+    (let [res (body->json (testGET uri "isbn=2"))]
+      (are [x y] (= x y)
+        nil (body->json (testGET uri "isbn=unknown"))
+
+        "2" (:isbn res)
+        "d" (:title res)
         )
       )
     )
@@ -409,6 +417,32 @@
           true (-> his first :read?)
           "hello" (-> his first :comment)
           true (-> his first :date today?)))
+      )
+    )
+  )
+
+(deftest test-get-comment-list-controller
+  (let [uri "/comment/list"]
+    (is (zero? (count (body->json (testGET uri)))))
+
+    (let [[user-key-str _ item-key-str] (put-test-data)
+          ]
+      (let [res (body->json (testGET uri))]
+        (are [x y] (= x y)
+          4 (count res)
+          "ddd" (-> res first :comment)
+          "2" (-> res first :item :isbn)
+          "fuga" (-> res first :user :nickname)))
+
+      ; create history without comment
+      (update-collection (get-item (str->key item-key-str)) (get-user (str->key user-key-str)))
+
+      (let [res (body->json (testGET uri))]
+        (are [x y] (= x y)
+          4 (count res)
+          "ddd" (-> res first :comment)
+          "2" (-> res first :item :isbn)
+          "fuga" (-> res first :user :nickname)))
       )
     )
   )

@@ -42,8 +42,9 @@
   (if (sequential? obj)
     (map #(complete-user-and-item % :user user :item item) obj)
     (if-not (nil? obj)
-      (assoc obj :user (aif user it (get-user (:user obj)))
-             :item (aif item it (get-item (:item obj)))))))
+      (let [user (aif user it (get-user (:user obj)))]
+        (assoc obj :user (assoc user :key (entity->key-str user))
+               :item (aif item it (get-item (:item obj))))))))
 (def complete-and-remove (comp remove-extra-key complete-user-and-item))
 
 ;; User
@@ -53,19 +54,29 @@
           collections (read?->read (get-collections-from-user user))
           histories (read?->read (get-histories-from-user user))]
       (remove-extra-key
-        (assoc user :collection (complete-user-and-item collections :user user)
+        (assoc user
+               :key (entity->key-str user)
+               :collection (complete-user-and-item collections :user user)
                :history (complete-user-and-item histories :user user))))))
 
 ;; Item
-(defn get-item-controller [{key-str :key}]
-  (when-let [key (str->key key-str)]
-    (let [key (str->key key-str)
-          item (get-item key)
-          collections (read?->read (get-collections-from-item item))
+(defn get-item-controller [{key-str :key, isbn :isbn}]
+  (when-let [item (if key-str (get-item (str->key key-str)) (if isbn (get-item isbn)))]
+    (let [collections (read?->read (get-collections-from-item item))
           histories (read?->read (get-histories-from-item item))]
       (remove-extra-key
         (assoc item :collection (complete-user-and-item collections :item item)
                :history (complete-user-and-item histories :item item))))))
+
+;(defn get-item-controller [{key-str :key}]
+;  (when-let [key (str->key key-str)]
+;    (let [key (str->key key-str)
+;          item (get-item key)
+;          collections (read?->read (get-collections-from-item item))
+;          histories (read?->read (get-histories-from-item item))]
+;      (remove-extra-key
+;        (assoc item :collection (complete-user-and-item collections :item item)
+;               :history (complete-user-and-item histories :item item))))))
 
 ;; Collection
 (defn get-collection-list-controller [params]
@@ -117,6 +128,11 @@
 
   )
 
+(defn get-comment-list-controller [params]
+  (let [[limit page] (params->limit-and-page params)]
+    (-> (get-comment-list :limit limit :page page)
+      complete-and-remove read?->read)))
+
 (defn update-collection-controller [{:keys [isbn comment read]} session]
   (if-let [user (get-current-user)]
     (if (string/blank? isbn)
@@ -157,6 +173,8 @@
   (apiGET "/history/list" get-history-list-controller)
   (apiGET "/history/user" get-histories-from-user-controller)
   (apiGET "/history/item" get-histories-from-item-controller)
+
+  (apiGET "/comment/list" get-comment-list-controller)
 
   (apiGET-with-session "/message" get-message-controller)
   (apiPOST-with-session "/update/collection" update-collection-controller))

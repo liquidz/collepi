@@ -2,22 +2,25 @@
 <html>
 <head>
 	<meta charset="utf-8">
-
 	<link rel="stylesheet" type="text/css" href="/css/main.css" />
-
-	<script type="text/javascript" src="./js/jquery-1.4.4.min.js"></script>
-	<script type="text/javascript" src="./js/snbinder-0.5.3.js"></script>
-	<script type="text/javascript" src="./js/main.js"></script>
-
-	<title></title>
+	<title>collepi</title>
 </head>
 <body>
+	<header>
+		<h1>collepi</h1>
+		<p>anytime, anywhere, collepi</p>
+	</header>
 
 	<p id="login"></p>
 
 	<p id="message"></p>
 
-	<div id="input">
+	<div id="search_form">
+		<input type="search" id="search_keyword" placeholder="search" />
+		<button>search</button>
+	</div>
+
+	<div id="input" class="if_logged_in">
 		<p>
 			<input type="text" id="isbn" />
 			<label><input type="checkbox" id="read" />read?</label>
@@ -28,10 +31,47 @@
 
 	<button id="test_btn">test</button>
 
-	<div id="user_collection">collection<ul></ul></div>
+	<nav><ul>
+		<li><a id="home_link" href="#home">home</a></li>
+		<li class="if_logged_in"><a href="#my/collection">my collection</a></li>
+		<li class="if_logged_in"><a href="#my/history">my history</a></li>
+	</ul></nav>
 
-	<div id="user_history">history<ul></ul></div>
+	<div id="screen">
+		<section id="my_collection">
+			<h1>my collection</h1>
+			<ul></ul>
+		</section>
 
+		<section id="my_history">
+			<h1>my history</h1>
+			<ul></ul>
+		</section>
 
+		<section id="home">
+			<h1>welcome collepi</h1>
+
+			<div id="recent_collections"><ul></ul></div>
+			<div id="recent_comments"><ul></ul></div>
+		</section>
+
+		<section id="search">
+			<h1>search result</h1>
+			<ul></ul>
+		</section>
+	</div>
+
+	<div id="subscreen">
+		<div id="item">
+		</div>
+	</div>
+
+	<footer>
+		<p>Copyright &copy; 2011 <a href="http://twitter.com/uochan/">@uochan</a></p>
+	</footer>
+
+	<script type="text/javascript" src="./js/jquery-1.4.4.min.js"></script>
+	<script type="text/javascript" src="./js/snbinder-0.5.3.js"></script>
+	<script type="text/javascript" src="./js/main.js"></script>
 </body>
 </html>
