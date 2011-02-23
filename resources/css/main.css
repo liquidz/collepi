@@ -4,8 +4,11 @@
 	color: #f00;
 }
 
+/*
 #screen section, .no_comment, .if_logged_in { display: none; }
 #screen section#home { display: block; }
+*/
+.no_comment, .if_logged_in { display: none; }
 
 section > h1 {
 	font-size: small;

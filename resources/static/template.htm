@@ -1,43 +1,55 @@
-{%}logged_in{%}
+{%}LOGGED_IN{%}
 <p><img src="$(.avatar)" alt="avatar" style="width:25px;height:25px;" /><span>$(.nickname)</span> <a href="$(.url)">logout</a></p>
 
-{%}not_logged_in{%}
+{%}NOT_LOGGED_IN{%}
 <p><a href="$(.url)">login</a></p>
 
-{%}item_small_image_link{%}
+{%}ITEM_SMALL_IMAGE_LINK{%}
 <a class="js_link" href="#item/$(.item.isbn)"><img src="$(.item.smallimage)" alt="$(.item.title) small image" /></a>
 
-{%}item_title_link{%}
+{%}ITEM_TITLE_LINK{%}
 <a class="js_link" href="#item/$(.item.isbn)">$(.item.title)</a>
 
-{%}item_user_link{%}
+{%}ITEM_USER_LINK{%}
 <a class="js_link" href="#user/$(.user.key)">$(.user.nickname)</a>
 
-{%}item_collected_users{%}
+{%}ITEM_COLLECTED_USERS{%}
 <li><a href="#user/$(.user.key)"><img src="$(.user.avatar)" /></a></li>
 
-{%}item_comments{%}
+{%}ITEM_COMMENT{%}
 <li>$(_item_user_link): $(.comment)</li>
 
-{%}recent_collection{%}
+{%}MY_COLLECTION{%}
+<li>
+	$(_item_small_image_link)
+</li>
+
+{%}MY_HISTORY{%}
+<li>
+	$(_item_title_link)
+	<span class="$(.comment_class)">$(.item.comment)</span>
+</li>
+
+
+{%}RECENT_COLLECTION{%}
 <li>
 	$(_item_small_image_link)
 	<span class="item_title">$(_item_title_link)</span>
 	<span class="item_user">$(_item_user_link)</span>
 </li>
 
-{%}recent_comment{%}
+{%}RECENT_COMMENT{%}
 <li>
 	<span>$(_item_title_link): </span>
 	<span>$(.comment)</span>
 </li>
 
-{%}item{%}
+{%}ITEM{%}
 <section>
 	<h1>$(.title)</h1>
 	<span>$(.author)</span>
 
 	<ul>$(_item_collected_users)</ul>
 
-	<ul>$(_item_comments)</ul>
+	<ul>$(_item_comment)</ul>
 </section>

@@ -1,18 +1,16 @@
 (function(window, undefined){
-	var Collepi = {};
-	Collepi.tmpl = {};
-
-	var template = {};
-	var snb = null;
-
-	Collepi.myCollectionPage = Collepi.myHistoryPage = 1;
+	var Collepi = {},
+		template = {},
+		snb = null,
+		my_collection_page = 1,
+   		my_history_page = 1;
 
 	// util {{{
-	var applyTemplate = function(obj, tmplMap){
-		if($.isArray(obj)){
-			$.map(obj, function(v){ applyTemplate(v, tmplMap); });
+	var applyTemplate = function(obj, tmplMap) {
+		if ($.isArray(obj)) {
+			$.map(obj, function(v) { applyTemplate(v, tmplMap); });
 		} else {
-			for(key in tmplMap){
+			for (key in tmplMap) {
 				obj[key] = snb.bind(tmplMap[key], obj);
 			}
 		}
@@ -20,19 +18,19 @@
 	// }}}
 
 	// =getMyCollection
-	Collepi.getMyCollection = function(){
-		$.getJSON("/my/collection", function(res){
-			$("#user_collection ul").html(snb.bind_rowset(Collepi.tmpl.user_collection, res));
+	var getMyCollection = function () {
+		$.getJSON("/my/collection", { page: my_collection_page }, function (res) {
+			applyTemplate(res, {item_small_image_link: template.ITEM_SMALL_IMAGE_LINK});
+			$("#my_collection ul").html(snb.bind_rowset(template.MY_COLLECTION, res));
 		});
 	};
 
 	// =getMyHistory
-	Collepi.getMyHistory = function(){
-		$.getJSON("/my/history", function(res){
-			$.map(res, function(v){
-				v.comment_class = (v.comment !== null) ? "has_comment" : "no_comment";
-			});
-			$("#user_history ul").html(snb.bind_rowset(Collepi.tmpl.user_history, res));
+	var getMyHistory = function () {
+		$.getJSON("/my/history", { page: my_history_page }, function (res) {
+			$.map(res, function (v) { v.comment_class = (v.comment !== null) ? "has_comment" : "no_comment"; });
+			applyTemplate(res, { item_title_link: template.ITEM_TITLE_LINK });
+			$("#my_history ul").html(snb.bind_rowset(template.MY_HISTORY, res));
 		});
 	};
 
@@ -45,36 +43,36 @@
 			console.log("isbn = " + val);
 			$.getJSON("/item", {isbn: val}, function(res){
 				var history = $.map(res.history, function(v){ return((v.comment === null) ? null : v); });
-				applyTemplate(history, {item_user_link: template.item_user_link});
+				applyTemplate(history, {item_user_link: template.ITEM_USER_LINK});
 
-				res.item_collected_users = snb.bind_rowset(template.item_collected_users, res.collection);
-				res.item_comments = snb.bind_rowset(template.item_comments, history);
+				res.item_collected_users = snb.bind_rowset(template.ITEM_COLLECTED_USERS, res.collection);
+				res.item_comment = snb.bind_rowset(template.ITEM_COMMENT, history);
 
-				$("#subscreen #item").html(snb.bind(template.item, res));
+				$("#subscreen #item").html(snb.bind(template.ITEM, res));
 			});
 		} else if(type === "#user"){
 			console.log("get user");
 		}
 	};
 
-	Collepi.getRecentCollections = function(){
-		$.getJSON("/collection/list", function(res){
+	var getRecentCollections = function(){
+		$.getJSON("/collection/list", function (res) {
 			applyTemplate(res, {
-				item_small_image_link: template.item_small_image_link,
-				item_title_link: template.item_title_link,
-				item_user_link: template.item_user_link
+				item_small_image_link: template.ITEM_SMALL_IMAGE_LINK,
+				item_title_link: template.ITEM_TITLE_LINK,
+				item_user_link: template.ITEM_USER_LINK
 			});
 			var target = $("#recent_collections ul");
-			target.html(snb.bind_rowset(template.recent_collection, res));
+			target.html(snb.bind_rowset(template.RECENT_COLLECTION, res));
 
 			target.find(".js_link").bind("click", Collepi.openJsLink);
 		});
 	};
 
-	Collepi.getRecentComments = function(){
-		$.getJSON("/comment/list", function(res){
-			applyTemplate(res, {item_title_link: template.item_title_link});
-			$("#recent_comments ul").html(snb.bind_rowset(template.recent_comment, res));
+	var getRecentComments = function(){
+		$.getJSON("/comment/list", function (res) {
+			applyTemplate(res, {item_title_link: template.ITEM_TITLE_LINK});
+			$("#recent_comments ul").html(snb.bind_rowset(template.RECENT_COMMENT, res));
 		});
 	};
 
@@ -91,7 +89,7 @@
 			dataType: "json",
 			success: function(res){
 				console.log("res = " + res);
-				if(res){ Collepi.getMyCollection(); }
+				if(res){ getMyCollection(); }
 			},
 			complete: function(){
 				//Collepi.getMessage();
@@ -115,15 +113,15 @@
 			template = tmpl;
 
 			$.getJSON("/check/login", function(res){
-				$("#login").html(snb.bind(tmpl[(res.loggedin) ? "logged_in" : "not_logged_in"], res));
+				$("#login").html(snb.bind(tmpl[(res.loggedin) ? "LOGGED_IN" : "NOT_LOGGED_IN"], res));
 				if(res.loggedin){
 					$(".if_logged_in").show();
-					Collepi.getMyCollection();
-					Collepi.getMyHistory();
+					getMyCollection();
+					getMyHistory();
 				}
 			});
 
-			Collepi.getRecentCollections();
+			getRecentCollections();
 			Collepi.getRecentComments();
 		});
 
