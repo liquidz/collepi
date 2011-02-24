@@ -27,7 +27,7 @@
 {%}MY_HISTORY{%}
 <li>
 	$(_item_title_link)
-	<span class="$(.comment_class)">$(.item.comment)</span>
+	<span class="$(.comment_class)">$(.comment)</span>
 </li>
 
 
@@ -46,6 +46,7 @@
 
 {%}ITEM{%}
 <section>
+	<img src="$(.largeimage)" />
 	<h1>$(.title)</h1>
 	<span>$(.author)</span>
 
@@ -53,3 +54,13 @@
 
 	<ul>$(_item_comment)</ul>
 </section>
+
+{%}USER{%}
+<div>
+	<img src="$(.avatar)" alt="avatar" />
+	<span>$(.nickname)</span>
+	<p>collection</p>
+	<ul>$(_my_collection)</ul>
+	<p>history</p>
+	<ul>$(_my_history)</ul>
+</div>

@@ -14,3 +14,7 @@ section > h1 {
 	font-size: small;
 }
 
+
+#item {
+	padding: 10px; border: 1px solid #aaa;
+}

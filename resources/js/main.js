@@ -1,6 +1,5 @@
 (function(window, undefined){
-	var Collepi = {},
-		template = {},
+	var template = {},
 		snb = null,
 		my_collection_page = 1,
    		my_history_page = 1;
@@ -17,6 +16,24 @@
 	};
 	// }}}
 
+	var addCommentFlagClass = function(comment_arr){
+		$.map(comment_arr, function (v) {
+			v.comment_class = (v.comment !== null) ? "has_comment" : "no_comment";
+		});
+	};
+
+	var initScreen = function () {
+		var hash = document.location.hash,
+			val = hash.split(/\//)[1];
+
+		if(hash.indexOf("#item") !== -1){
+			openJsLinkBody("#item", val);
+		} else if(hash.indexOf("#user") !== -1){
+			console.log(val);
+			openJsLinkBody("#user", val);
+		}
+	};
+
 	// =getMyCollection
 	var getMyCollection = function () {
 		$.getJSON("/my/collection", { page: my_collection_page }, function (res) {
@@ -28,21 +45,26 @@
 	// =getMyHistory
 	var getMyHistory = function () {
 		$.getJSON("/my/history", { page: my_history_page }, function (res) {
-			$.map(res, function (v) { v.comment_class = (v.comment !== null) ? "has_comment" : "no_comment"; });
+			addCommentFlagClass(res);
 			applyTemplate(res, { item_title_link: template.ITEM_TITLE_LINK });
 			$("#my_history ul").html(snb.bind_rowset(template.MY_HISTORY, res));
 		});
 	};
 
-	Collepi.openJsLink = function(e){
-		var link = $(e.target);
-		var href = link.attr("href").split(/\//);
-		var type = href[0], val = href[1];
+	var openJsLink = function (e) {
+		var link = $(e.target),
+			href = (link.attr("href") ? link : $(link.parent().get(0))).attr("href").split(/\//),
+			type = href[0], val = href[1];
+
+		openJsLinkBody(type, val);
+	};
+
+	var openJsLinkBody = function (type, val) {
+		var history = null;
 
 		if(type === "#item"){
-			console.log("isbn = " + val);
-			$.getJSON("/item", {isbn: val}, function(res){
-				var history = $.map(res.history, function(v){ return((v.comment === null) ? null : v); });
+			$.getJSON("/item", {isbn: val}, function (res) {
+				history = $.map(res.history, function (v) { return((v.comment === null) ? null : v); });
 				applyTemplate(history, {item_user_link: template.ITEM_USER_LINK});
 
 				res.item_collected_users = snb.bind_rowset(template.ITEM_COLLECTED_USERS, res.collection);
@@ -51,21 +73,32 @@
 				$("#subscreen #item").html(snb.bind(template.ITEM, res));
 			});
 		} else if(type === "#user"){
-			console.log("get user");
+			$.getJSON("/user", {key: val}, function (res) {
+				applyTemplate(res.collection, {item_small_image_link: template.ITEM_SMALL_IMAGE_LINK});
+				applyTemplate(res.history, {item_title_link: template.ITEM_TITLE_LINK});
+				addCommentFlagClass(res.history);
+
+				res.my_collection = snb.bind_rowset(template.MY_COLLECTION, res.collection);
+				res.my_history = snb.bind_rowset(template.MY_HISTORY, res.history);
+
+				$("#subscreen #user").html(snb.bind(template.USER, res));
+			});
 		}
 	};
 
 	var getRecentCollections = function(){
+		var target = null;
+
 		$.getJSON("/collection/list", function (res) {
 			applyTemplate(res, {
 				item_small_image_link: template.ITEM_SMALL_IMAGE_LINK,
 				item_title_link: template.ITEM_TITLE_LINK,
 				item_user_link: template.ITEM_USER_LINK
 			});
-			var target = $("#recent_collections ul");
+			target = $("#recent_collections ul");
 			target.html(snb.bind_rowset(template.RECENT_COLLECTION, res));
 
-			target.find(".js_link").bind("click", Collepi.openJsLink);
+			target.find(".js_link").bind("click", openJsLink);
 		});
 	};
 
@@ -77,7 +110,7 @@
 	};
 
 	// =updateCollection
-	Collepi.updateCollection = function(isbn){
+	var updateCollection = function(isbn){
 		$.ajax({
 			type: "POST",
 			url: "/update/collection",
@@ -88,11 +121,9 @@
 			},
 			dataType: "json",
 			success: function(res){
-				console.log("res = " + res);
 				if(res){ getMyCollection(); }
 			},
 			complete: function(){
-				//Collepi.getMessage();
 				getMessage();
 			}
 		});
@@ -122,13 +153,13 @@
 			});
 
 			getRecentCollections();
-			Collepi.getRecentComments();
+			getRecentComments();
 		});
 
 		$("#add_isbn").bind("click", function(){
 			console.log("clicked");
 			var isbn = $("#isbn").val();
-			Collepi.updateCollection(isbn);
+			updateCollection(isbn);
 		});
 
 		$("#test_btn").bind("click", function(){
@@ -144,6 +175,8 @@
 		getMessage();
 	});
 
-	window.Collepi = Collepi;
+	initScreen();
+
+	//window.Collepi = Collepi;
 
 })(window);
