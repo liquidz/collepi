@@ -68,40 +68,39 @@
         (assoc item :collection (complete-user-and-item collections :item item)
                :history (complete-user-and-item histories :item item))))))
 
-;(defn get-item-controller [{key-str :key}]
-;  (when-let [key (str->key key-str)]
-;    (let [key (str->key key-str)
-;          item (get-item key)
-;          collections (read?->read (get-collections-from-item item))
-;          histories (read?->read (get-histories-from-item item))]
-;      (remove-extra-key
-;        (assoc item :collection (complete-user-and-item collections :item item)
-;               :history (complete-user-and-item histories :item item))))))
-
 ;; Collection
-(defn get-collection-list-controller [params]
-  (let [[limit page] (params->limit-and-page params)]
-    (-> (get-collection-list :limit limit :page page)
-      complete-and-remove read?->read)))
-
-(defn- get-collections-from-controller [f {key-str :key, read :read :as params}]
+(defn get-collection-list-controller [{:keys [with_total]:or {with_total "false"} :as params}]
   (let [[limit page] (params->limit-and-page params)
-        key (str->key key-str)]
-    (when key
-      (->(f key :limit limit :page page :read? (aif read (= it "true") nil))
-        complete-and-remove read?->read))))
+        res (-> (get-collection-list :limit limit :page page)
+          complete-and-remove read?->read)]
+    (if (= with_total "true")
+      {:total (count-collection) :result res} res)))
+
+(defn- get-collections-from-controller [type f {:keys [key read with_total] :or {with_total "false"} :as params}]
+  (let [[limit page] (params->limit-and-page params)
+        key* (str->key key)]
+    (when key*
+      (let [res (->(f key* :limit limit :page page :read? (aif read (= it "true") nil))
+                  complete-and-remove read?->read)]
+        (if (= with_total "true")
+          {:total (count-collection type key*) :result res}
+          res)))))
 
 (def get-collections-from-user-controller
-  (partial get-collections-from-controller get-collections-from-user))
-(def get-collections-from-item-controller
-  (partial get-collections-from-controller get-collections-from-item))
+  (partial get-collections-from-controller :user get-collections-from-user))
 
-(defn get-my-collections-controller [params]
+(def get-collections-from-item-controller
+  (partial get-collections-from-controller :item get-collections-from-item))
+
+;(defn get-my-collections-controller [{with-total? :with_total, :or {with-total? "false"} :as params}]
+(defn get-my-collections-controller [{:keys [with_total] :or {with_total "false"} :as params}]
   (when-let [user (get-current-user)]
-    (let [[limit page] (params->limit-and-page params)]
-      (-> (get-collections-from-user user :limit limit :page page)
-        complete-and-remove read?->read
-        ))))
+    (let [[limit page] (params->limit-and-page params)
+          res (-> (get-collections-from-user user :limit limit :page page)
+                complete-and-remove read?->read)]
+      (if (= with_total "true")
+        {:total (count-collection :user user) :result res}
+        res))))
 
 ;; History
 (defn get-history-list-controller [params]
@@ -120,13 +119,14 @@
 (def get-histories-from-item-controller
   (partial get-histories-from-controller get-histories-from-item))
 
-(defn get-my-histories-controller [params]
+(defn get-my-histories-controller [{:keys [with_total] :or {with_total "false"} :as params}]
   (when-let [user (get-current-user)]
-    (let [[limit page] (params->limit-and-page params)]
-      (-> (get-histories-from-user user :limit limit :page page)
-        complete-and-remove read?->read)))
-
-  )
+    (let [[limit page] (params->limit-and-page params)
+          res (-> (get-histories-from-user user :limit limit :page page)
+                 complete-and-remove read?->read)]
+      (if (= with_total "true")
+        {:total (count-history :user user) :result res}
+        res))))
 
 (defn get-comment-list-controller [params]
   (let [[limit page] (params->limit-and-page params)]

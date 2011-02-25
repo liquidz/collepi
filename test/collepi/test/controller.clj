@@ -165,6 +165,12 @@
       0 (testGET uri "key=unknown")
       )
 
+    (are [x y z] (= x (y (body->json z)))
+      2 (comp count :result) (testGET uri "with_total=true&key=" user-key-str)
+      1 (comp count :result) (testGET uri "with_total=true&key=" user-key-str "&limit=1")
+      2 :total (testGET uri "with_total=true&key=" user-key-str "&limit=1")
+      )
+
     (let [res (body->json (testGET uri "key=" user-key-str))]
       (are [x y] (= x y)
         nil (body->json (testGET uri "key=unknown"))
@@ -202,6 +208,12 @@
       0 (testGET uri "key=unknown")
       )
 
+    (are [x y z] (= x (y (body->json z)))
+      2 (comp count :result) (testGET uri "with_total=true&key=" item-key-str)
+      1 (comp count :result) (testGET uri "with_total=true&key=" item-key-str "&limit=1")
+      2 :total (testGET uri "with_total=true&key=" item-key-str "&limit=1")
+      )
+
     (let [res (body->json (testGET uri "key=" item-key-str))]
       (are [x y] (= x y)
         nil (body->json (testGET uri "key=unknown"))
@@ -232,17 +244,26 @@
 (deftest test-get-my-collections
   (let [uri "/my/collection?"]
     (is (zero? (count (body->json (testGET uri)))))
+    (is (zero? (count (:result (body->json (testGET uri "with_total=true"))))))
+    (is (zero? (:total (body->json (testGET uri "with_total=true")))))
 
     (put-test-data)
 
-    (are [x y] (= x (count (body->json y)))
-      2 (testGET uri)
-      1 (testGET uri "limit=1"))
+    (are [x y z] (= x (y (body->json z)))
+      2 count (testGET uri)
+      1 count (testGET uri "limit=1")
+
+      2 (comp count :result) (testGET uri "with_total=true")
+      2 :total (testGET uri "with_total=true")
+      1 (comp count :result) (testGET uri "with_total=true&limit=1")
+      2 :total (testGET uri "with_total=true&limit=1")
+      )
 
     (let [res (body->json (testGET uri))]
       (are [x y] (= x y)
         "hoge" (-> res first :user :nickname)
-        "2" (-> res first :item :isbn)))))
+        "2" (-> res first :item :isbn)
+        ))))
 
 (deftest test-get-history-list
   (let [uri "/history/list?"]
@@ -346,12 +367,20 @@
 (deftest test-get-my-histories
   (let [uri "/my/history?"]
     (is (zero? (count (body->json (testGET uri)))))
+    (is (zero? (count (:result (body->json (testGET uri "with_total=true"))))))
+    (is (zero? (:total (body->json (testGET uri "with_total=true")))))
 
     (put-test-data)
 
-    (are [x y] (= x (count (body->json y)))
-      2 (testGET uri)
-      1 (testGET uri "limit=1"))
+    (are [x y z] (= x (y (body->json z)))
+      2 count (testGET uri)
+      1 count (testGET uri "limit=1")
+
+      2 (comp count :result) (testGET uri "with_total=true")
+      2 :total (testGET uri "with_total=true")
+      1 (comp count :result) (testGET uri "with_total=true&limit=1")
+      2 :total (testGET uri "with_total=true&limit=1")
+      )
 
     (let [res (body->json (testGET uri))]
       (are [x y] (= x y)

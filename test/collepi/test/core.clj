@@ -218,6 +218,27 @@
     )
   )
 
+(deftest test-count-collection
+  (is (zero? (count-collection)))
+
+  (let [user1 (create-user "hoge@fuga.com" "hoge")
+        user2 (create-user "fuga@fuga.com" "fuga")
+        item1 (create-item "1" :static? true)
+        item2 (create-item "2" :static? true)]
+    (create-collection item1 user1)
+    (create-collection item1 user2)
+    (create-collection item2 user2)
+
+    (are [x y] (= x y)
+      3 (count-collection)
+      1 (count-collection :user user1)
+      2 (count-collection :user user2)
+      2 (count-collection :item item1)
+      1 (count-collection :item item2)
+      )
+    )
+  )
+
 ;; History
 (deftest test-create-history
   (let [user (create-user "hoge@fuga.com" "hoge")
@@ -305,6 +326,27 @@
         "1" (-> res second :item get-item :isbn)
         "hoge" (-> res second :user get-user :nickname)
         )
+      )
+    )
+  )
+
+(deftest test-count-history
+  (is (zero? (count-history)))
+
+  (let [user1 (create-user "hoge@fuga.com" "hoge")
+        user2 (create-user "fuga@fuga.com" "fuga")
+        item1 (create-item "1" :static? true)
+        item2 (create-item "2" :static? true)]
+    (update-collection item1 user1)
+    (update-collection item1 user2)
+    (update-collection item2 user2)
+
+    (are [x y] (= x y)
+      3 (count-history)
+      1 (count-history :user user1)
+      2 (count-history :user user2)
+      2 (count-history :item item1)
+      1 (count-history :item item2)
       )
     )
   )

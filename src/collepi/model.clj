@@ -70,8 +70,8 @@
   `(ds/query :kind History :filter ~filter :sort [[:date :desc] [:point :desc]]
              :limit ~limit :offset (if (and ~limit ~page) (* ~limit (dec ~page)))))
 
-;; User
 
+;; User
 (defn create-user
   ([user]
    (create-user (.getEmail user) (.getNickname user)))
@@ -110,8 +110,6 @@
        )
   )
 
-(def *sort* '([:date :desc] [:point :desc]))
-
 ;; History
 (defn get-history [key] (when key (ds/retrieve History key)))
 (defn get-history-list [& {:keys [limit page] :or {limit *default-limit*, page 1}}]
@@ -126,6 +124,11 @@
     (query-history :filter (= key val*) :limit limit :page page)))
 (def get-histories-from-user (partial get-histories-from :user))
 (def get-histories-from-item (partial get-histories-from :item))
+(defn count-history [& {:keys [user item]}]
+  (cond
+    user (ds/query :kind History :filter (= :user user) :count-only? true)
+    item (ds/query :kind History :filter (= :item item) :count-only? true)
+    :else (ds/query :kind History :count-only? true)))
 
 ;; Collections
 (defn get-collection [key-or-id] (when key-or-id (ds/retrieve Collection key-or-id)))
@@ -164,3 +167,9 @@
 
 (defn get-comment-list [& {:keys [limit page] :or {limit *default-limit*, page 1}}]
   (take limit (drop (* limit (dec page)) (remove #(nil? (:comment %)) (query-history)))))
+
+(defn count-collection [& {:keys [user item]}]
+  (cond
+    user (ds/query :kind Collection :filter (= :user user) :count-only? true)
+    item (ds/query :kind Collection :filter (= :item item) :count-only? true)
+    :else (ds/query :kind Collection :count-only? true)))
