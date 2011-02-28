@@ -55,7 +55,6 @@
 
 ; entity
 (ds/defentity User [^:key email nickname avatar date])
-;(ds/defentity Item [^:key isbn title author thumbnail])
 (ds/defentity Item [^:key isbn title author smallimage mediumimage largeimage])
 (ds/defentity Collection [^:key id item user point read? secret? date])
 (ds/defentity History [item user point read? comment date])
@@ -70,6 +69,9 @@
   `(ds/query :kind History :filter ~filter :sort [[:date :desc] [:point :desc]]
              :limit ~limit :offset (if (and ~limit ~page) (* ~limit (dec ~page)))))
 
+(defn get-data [id key]
+  (-> (ds/query :kind Data :filter [(= :id id) (= :key key)] :limit 1) first :value)
+  )
 
 ;; User
 (defn create-user
