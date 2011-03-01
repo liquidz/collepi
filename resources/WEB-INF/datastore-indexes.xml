@@ -1,0 +1,31 @@
+<!-- Indices written at Tue, 1 Mar 2011 14:15:06 UTC -->
+
+<datastore-indexes autoGenerate="true">
+
+    <!-- Used 2 times in query history -->
+    <datastore-index kind="Collection" ancestor="false" source="auto">
+        <property name="date" direction="desc"/>
+        <property name="point" direction="desc"/>
+    </datastore-index>
+
+    <!-- Used 2 times in query history -->
+    <datastore-index kind="History" ancestor="false" source="auto">
+        <property name="date" direction="desc"/>
+        <property name="point" direction="desc"/>
+    </datastore-index>
+
+    <!-- Used 3 times in query history -->
+    <datastore-index kind="Collection" ancestor="false" source="auto">
+        <property name="user" direction="asc"/>
+        <property name="date" direction="desc"/>
+        <property name="point" direction="desc"/>
+    </datastore-index>
+
+    <!-- Used 1 time in query history -->
+    <datastore-index kind="History" ancestor="false" source="auto">
+        <property name="user" direction="asc"/>
+        <property name="date" direction="desc"/>
+        <property name="point" direction="desc"/>
+    </datastore-index>
+
+</datastore-indexes>

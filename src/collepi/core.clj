@@ -177,7 +177,15 @@
   (apiGET "/comment/list" get-comment-list-controller)
 
   (apiGET-with-session "/message" get-message-controller)
-  (apiPOST-with-session "/update/collection" update-collection-controller))
+  (apiPOST-with-session "/update/collection" update-collection-controller)
+
+  (GET "/test" _
+    (aif (get-current-user)
+      (str "logged in as " (:nickname it))
+      "not logged in"
+      )
+    )
+  )
 
 (defroutes main-handler
   (GET "/login" _ (redirect (du/login-url)))
