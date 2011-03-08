@@ -69,6 +69,10 @@
                :history (complete-user-and-item histories :item item))))))
 
 ;; Collection
+(defn get-collection-controller [{:keys [id]}]
+  (complete-and-remove (read?->read (get-collection id)))
+  )
+
 (defn get-collection-list-controller [{:keys [with_total]:or {with_total "false"} :as params}]
   (let [[limit page] (params->limit-and-page params)
         res (-> (get-collection-list :limit limit :page page)
@@ -163,6 +167,7 @@
 
   (apiGET "/check/login" check-login-controller)
 
+  (apiGET "/collection" get-collection-controller)
   (apiGET "/collection/list" get-collection-list-controller)
   (apiGET "/collection/user" get-collections-from-user-controller)
   (apiGET "/collection/item" get-collections-from-item-controller)
@@ -179,10 +184,10 @@
   (apiGET-with-session "/message" get-message-controller)
   (apiPOST-with-session "/update/collection" update-collection-controller)
 
-  (GET "/test" _
+  (GET "/test" {params :params}
     (aif (get-current-user)
       (str "logged in as " (:nickname it))
-      "not logged in"
+      (str "not logged in" (apply str params))
       )
     )
   )

@@ -129,6 +129,24 @@
     )
   )
 
+(deftest test-get-collection
+  (let [uri "/collection?"]
+    (is (nil? (body->json (testGET uri))))
+
+    (let [[_ _ _ _ col-key-str] (put-test-data)
+          id (:id (get-collection (str->key col-key-str)))
+          res (body->json (testGET uri "id=" id))]
+      (are [x y] (= x y)
+        false (:read res)
+        "a" (-> res :item :title)
+        "b" (-> res :item :author)
+        "hoge" (-> res :user :nickname)
+        nil (-> res :user :email)
+        )
+      )
+    )
+  )
+
 (deftest test-get-collection-list
   (let [uri "/collection/list?"]
     (is (zero? (count (body->json (testGET uri)))))
